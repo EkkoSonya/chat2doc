@@ -73,8 +73,8 @@
                             <template #name>
                                 <span>
                                     所有文件
-                                    <!-- <UpOutlined @click="text"/> -->
-                                    <DownOutlined @click="text"/>
+                                    <UpOutlined v-if="!data.flag" @click="text"/>
+                                    <DownOutlined v-if="data.flag" @click="text"/>
                                 </span>
                             </template>
                             <template #operation>
@@ -96,7 +96,7 @@
 <script lang="ts" setup>
 import { InboxOutlined, PlusOutlined, QuestionCircleOutlined, DownOutlined, UpOutlined } from '@ant-design/icons-vue';
 import { message } from 'ant-design-vue';
-import { reactive, ref } from 'vue';
+import { reactive, ref, onMounted } from 'vue';
 import type { UploadChangeParam } from 'ant-design-vue';
 
 // 数据样式
@@ -207,6 +207,11 @@ const text = () => {
         table.style.display = 'none'
     data.flag = !data.flag
 }
+
+onMounted(() => {
+    let table = <HTMLImageElement>document.querySelector('.items .ant-table-tbody')
+    table.style.display = 'none'
+})
 </script>
 
 <style scoped lang="scss">
