@@ -32,11 +32,17 @@
                     </a-upload-dragger>
                 </a-card>
             </div>
+
             <!-- 用户上传文件列表 -->
             <div class="list">
                 <a-card class="card">
                     <div class="folder" >
-                        <a-button style="margin-right:50px"><PlusOutlined />新建文件夹</a-button>    
+                        <a-button 
+                            @click="visible.folderVisible = true"
+                            style="margin-right:50px"
+                        >
+                            <PlusOutlined />新建文件夹
+                        </a-button>    
                         <a-button><PlusOutlined />上传文件</a-button> 
                         <a-table 
                             size="small"
@@ -73,8 +79,8 @@
                             <template #name>
                                 <span>
                                     所有文件
-                                    <UpOutlined v-if="!data.flag" @click="text"/>
-                                    <DownOutlined v-if="data.flag" @click="text"/>
+                                    <UpOutlined v-if="!data.flag" @click="changeItemsDisplay"/>
+                                    <DownOutlined v-if="data.flag" @click="changeItemsDisplay"/>
                                 </span>
                             </template>
                             <template #operation>
@@ -89,7 +95,78 @@
                 </a-card>
             </div>
         </div>
+        <a-modal
+            :visible="visible.userVisible"
+            width="400px"
+            :closable = false
+            :footer = "null"
+        >
+            <div class="title" style="text-align: center;margin-bottom: 30px;">
+                <h2>
+                    登录
+                </h2>
+            </div>
+            <div class="form">
+                <a-form
+                    :model="data.userInfo"
+                    labelAlign="left"
+                >
+                    <a-form-item label="用户">
+                        <a-input v-model:value="data.userInfo.name" />
+                    </a-form-item>
+                    <a-form-item label="密码">
+                        <a-input v-model:value="data.userInfo.password"/>
+                    </a-form-item>
+                    <a-form-item>
+                        <div class="flexCenter">    
+                            <a-button 
+                                type="primary" 
+                                style="margin-right:2rem"
+                                @click="userLogin"
+                            >登录</a-button>
+                            <a-button type="primary">注册</a-button>
+                        </div>
+                    </a-form-item>
+                </a-form>
+            </div>
+        </a-modal>
 
+        <a-modal
+            :visible="visible.folderVisible"
+            width="400px"
+            :closable = false
+            :footer = "null"
+        >
+            <div class="title" style="text-align: center;margin-bottom: 30px;">
+                <h2>
+                    新建文件夹
+                </h2>
+            </div>
+
+            <div class="form">
+                <a-form
+                    :model="data.newFolder"
+                    labelAlign="left"
+                >
+                    <a-form-item label="文件夹名称">
+                        <a-input v-model:value="data.newFolder.name" />
+                    </a-form-item>
+                    <a-form-item label="描述信息">
+                        <a-input v-model:value="data.newFolder.description"/>
+                    </a-form-item>
+                    <a-form-item>
+                        <div class="flexCenter">    
+                            <a-button 
+                                type="primary" 
+                                @click="create_doc_store"
+                            >
+                                创建文件夹
+                            </a-button>
+                        </div>
+                    </a-form-item>
+                </a-form>
+            </div>
+        </a-modal>
     </div>
 </template>
 
@@ -98,22 +175,13 @@ import { InboxOutlined, PlusOutlined, QuestionCircleOutlined, DownOutlined, UpOu
 import { message } from 'ant-design-vue';
 import { reactive, ref, onMounted } from 'vue';
 import type { UploadChangeParam } from 'ant-design-vue';
+import { get, post } from './api/index'
+import qs from 'qs'
 
+
+import type {Data,Visible} from './types'
 // 数据样式
-interface Item {
-    name: string;
-}
 
-interface Folder {
-    name: string;
-    docs?: Item[];
-}
-
-interface Data {
-    folders: Folder[];
-    items: Item[];
-    flag: boolean;
-}
 
 // 表格样式
 const columns = [
@@ -137,11 +205,23 @@ const columns = [
     }
 ]
 
-// 数据
+const visible = reactive<Visible>({
+    userVisible: false,
+    folderVisible: false,
+})
+
 const data = reactive<Data>({
+    userInfo: {
+        name: '',
+        password: ''
+    },
     folders: [],
     items: [],
-    flag: true
+    flag: true,
+    newFolder: {
+        name: '',
+        description: ''
+    }
 })
 
 const fileList = ref([])
@@ -177,6 +257,7 @@ data.folders = [
         ]
     }
 ]
+
 data.folders.forEach(folder => {
     if(folder.docs){
         folder.docs.forEach(doc => {
@@ -187,6 +268,58 @@ data.folders.forEach(folder => {
 
 
 // 函数
+
+// 登录
+const userLogin = () => {
+    post('/paper/login', qs.stringify(data.userInfo)).then(res => {
+        if (res.code == 0){
+            message.success('登录成功')
+            visible.userVisible = false
+        }
+        else{
+            message.error('登录失败')
+            visible.userVisible = true
+        }
+    })
+}
+
+// 获取文档信息
+const get_docs = () => {
+    return get('/paper/get_docs').then(res => {
+        // 需要修改下数据结构 与后端类型对应
+        if(res.code == 0){
+            data.folders = res.data as any
+            return true
+        }
+        else{
+            message.error('获取文档信息失败')
+            return false
+        }
+    })
+    .catch(err => {
+        message.error('获取文档信息失败')
+        return false
+    })
+}
+
+// 新建文件夹
+const create_doc_store = () => {
+    return post('/paper/create_doc_store', qs.stringify(data.newFolder)).then(res => {
+        console.log(res)
+        if (res.code == 0){
+            message.success('创建成功')
+        }
+        else{
+            message.error('创建失败')
+        }
+        data.newFolder = {
+            name: '',
+            description: ''
+        }
+        visible.folderVisible = false
+    })
+}
+
 const handleChange = (info: UploadChangeParam) => {
     const status = info.file.status;
     if (status !== 'uploading') {
@@ -199,7 +332,7 @@ const handleChange = (info: UploadChangeParam) => {
     }
 };
 
-const text = () => {
+const changeItemsDisplay = () => {
     let table = <HTMLImageElement>document.querySelector('.items .ant-table-tbody')
     if(data.flag)
         table.style.display = ''
@@ -208,9 +341,12 @@ const text = () => {
     data.flag = !data.flag
 }
 
-onMounted(() => {
+onMounted(async () => {
     let table = <HTMLImageElement>document.querySelector('.items .ant-table-tbody')
     table.style.display = 'none'
+   
+    if(!await get_docs())
+        visible.userVisible = true
 })
 </script>
 
@@ -242,5 +378,11 @@ onMounted(() => {
             margin-top: 1rem;
         }
     }
+}
+.flexCenter {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1rem;
 }
 </style>
