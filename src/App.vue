@@ -11,9 +11,13 @@
                 <a-card class="card">
                     <a-upload-dragger 
                         v-model:fileList="fileList" 
-                        name="file" 
-                        :multiple="true"
-                        action="https://www.mocky.io/v2/5cc8019d300000980a055e76" 
+                        name="paper_file" 
+                        :multiple="false"
+                        :withCredentials="true"
+                        action="http://localhost:5173/chat2doc/paper/upload_doc" 
+                        :headers="{
+                            'X-Requested-With': null
+                        }"
                         @change="handleChange" 
                         @drop="handleDrop"
                     >
@@ -41,13 +45,17 @@
                             @click="visible.folderVisible = true"
                             style="margin-right:50px"
                         >
-                            <PlusOutlined />新建文件夹
+                            <PlusOutlined />
+                            新建文件夹
                         </a-button>    
-                        <a-button><PlusOutlined />上传文件</a-button> 
+                        <a-button>
+                            <PlusOutlined />
+                            上传文件
+                        </a-button> 
                         <a-table 
                             size="small"
                             :pagination={disabled:true,hideOnSinglePage:true} 
-                            :columns="columns" 
+                            :columns="FolderColumns" 
                             :data-source="data.folders"
                             style="margin-top: 10px;"
                         >
@@ -57,11 +65,11 @@
                                     <QuestionCircleOutlined />
                                 </span>
                             </template>
-                            <template #operation>
+                            <template #operation="{ record }">
                                 <span>
                                     <a>提问</a>
                                     <a-divider type="vertical" />
-                                    <a>删除</a>
+                                    <a @click="del_doc_store( record.id )">删除</a>
                                     <a-divider type="vertical" />
                                     <a>上传</a>
                                 </span>
@@ -73,7 +81,7 @@
                         <a-table 
                             size="small"
                             :pagination={disabled:true,hideOnSinglePage:true} 
-                            :columns="columns" 
+                            :columns="ItemsColumns" 
                             :data-source="data.items"
                         >
                             <template #name>
@@ -83,6 +91,7 @@
                                     <DownOutlined v-if="data.flag" @click="changeItemsDisplay"/>
                                 </span>
                             </template>
+
                             <template #operation>
                                 <span>
                                     <a>提问</a>
@@ -95,6 +104,8 @@
                 </a-card>
             </div>
         </div>
+
+        <!-- 用户登录 -->
         <a-modal
             :visible="visible.userVisible"
             width="400px"
@@ -108,14 +119,25 @@
             </div>
             <div class="form">
                 <a-form
+                    ref="userInfoForm"
                     :model="data.userInfo"
+                    :rules="userInfoRules"
                     labelAlign="left"
                 >
-                    <a-form-item label="用户">
+                    <a-form-item 
+                        label="用户" 
+                        :required="true" 
+                        prop="name"
+                    >
                         <a-input v-model:value="data.userInfo.name" />
                     </a-form-item>
-                    <a-form-item label="密码">
-                        <a-input v-model:value="data.userInfo.password"/>
+                    <a-form-item 
+                        label="密码" 
+                        :required="true" 
+                        prop="password"
+                        style="padding-top: 10px;"
+                    >
+                        <a-input-password v-model:value="data.userInfo.password"/>
                     </a-form-item>
                     <a-form-item>
                         <div class="flexCenter">    
@@ -131,6 +153,7 @@
             </div>
         </a-modal>
 
+        <!-- 新建文件夹信息 -->
         <a-modal
             :visible="visible.folderVisible"
             width="400px"
@@ -167,6 +190,49 @@
                 </a-form>
             </div>
         </a-modal>
+
+        <!-- 上传文件后选择所放置的文件夹 -->
+        <a-modal
+            :visible="visible.chooseVisible"
+            width="400px"
+            :closable = false
+            :footer = "null"
+        >
+            <div class="title" style="text-align: center;margin-bottom: 30px;">
+                <h2>
+                    请选择文件夹放置文件
+                </h2>
+            </div>
+
+            <div class="form">
+                <a-form
+                    :model="chooseFile"
+                    labelAlign="left"
+                >
+                    <a-form-item label="文件夹名称">
+                        <a-select v-model:value="chooseFile.docstore_id">
+                            <a-select-option
+                                v-for="item in data.folders"
+                                :value = "item.id"
+                            >
+                                {{ item.name }}
+                            </a-select-option>
+                        </a-select>
+                    </a-form-item>
+
+                    <a-form-item>
+                        <a-button 
+                            type="primary" 
+                            style="margin-right:2rem"
+                            @click="ConfirmFolder"
+                        >
+                        确认
+                        </a-button>
+                    </a-form-item>
+                </a-form>
+            </div>
+
+        </a-modal>
     </div>
 </template>
 
@@ -177,16 +243,32 @@ import { reactive, ref, onMounted } from 'vue';
 import type { UploadChangeParam } from 'ant-design-vue';
 import { get, post } from './api/index'
 import qs from 'qs'
-
-
-import type {Data,Visible} from './types'
 // 数据样式
-
+import type { Data, Visible, DocInfo} from './types'
 
 // 表格样式
-const columns = [
+const FolderColumns = [
     {
         dataIndex: 'name',
+        slots: {title: 'name'},
+    },
+    {
+        dataIndex: 'operation',
+        key: 'operation',
+        title: '操作',
+        slots:{customRender: 'operation'},
+        align: 'center',
+        width: 150,
+        customHeaderCell: ()=>({
+            style: {
+                textAlign: 'center'
+            }
+        })
+    }
+]
+const ItemsColumns = [
+    {
+        dataIndex: 'title',
         key: 'name',
         slots: {title: 'name'},
     },
@@ -205,9 +287,11 @@ const columns = [
     }
 ]
 
+
 const visible = reactive<Visible>({
     userVisible: false,
     folderVisible: false,
+    chooseVisible: false
 })
 
 const data = reactive<Data>({
@@ -221,66 +305,53 @@ const data = reactive<Data>({
     newFolder: {
         name: '',
         description: ''
-    }
+    },
 })
 
-const fileList = ref([])
-const handleDrop = (e: DragEvent) => {
-    console.log(e);
+const chooseFile = reactive<DocInfo>({
+    docstore_id: undefined,
+    path: '',
+    authors: [],
+    title: '',
+    description: '',
+    abstract: ''
+})
+
+const userInfoForm = ref()
+const userInfoRules = {
+    name: [
+        { required: true, message: '请输入用户名', trigger: 'blur'},
+    ],
+    password: [
+        { required: true, message: '请输入密码', trigger: 'blur'},
+    ]
 }
 
-// 模拟数据
-data.folders = [
-    {
-        name:'folder1',
-        docs:[
-            {
-                name:'doc1',
-            },
-            {
-                name:'doc2',
-            }
-        ]
-    },
-    {
-        name:'folder2',
-        docs:[
-            {
-                name:'doc3',
-            },
-            {
-                name:'doc4',
-            },
-            {
-                name:'doc5',
-            }
-        ]
-    }
-]
-
-data.folders.forEach(folder => {
-    if(folder.docs){
-        folder.docs.forEach(doc => {
-            data.items.push(doc)
-        })
-    }
-})
+const fileList = ref([])
 
 
 // 函数
 
 // 登录
 const userLogin = () => {
-    post('/paper/login', qs.stringify(data.userInfo)).then(res => {
-        if (res.code == 0){
-            message.success('登录成功')
-            visible.userVisible = false
-        }
-        else{
+    userInfoForm.value.validate()
+        .then(() => {
+            post('/paper/login', qs.stringify(data.userInfo)).then(res => {
+                if (res.code == 0){
+                    message.success('登录成功')
+                    visible.userVisible = false
+                    get_docs()
+                }
+                else{
+                    message.error('登录失败')
+                    visible.userVisible = true
+                }
+            })
+        })
+        .catch(() => {
             message.error('登录失败')
             visible.userVisible = true
-        }
-    })
+        })
 }
 
 // 获取文档信息
@@ -289,6 +360,13 @@ const get_docs = () => {
         // 需要修改下数据结构 与后端类型对应
         if(res.code == 0){
             data.folders = res.data as any
+            data.folders.forEach(folder => {
+                if(folder.docs){
+                    folder.docs.forEach(doc => {
+                        data.items.push(doc)
+                    })
+                }
+            })
             return true
         }
         else{
@@ -302,12 +380,13 @@ const get_docs = () => {
     })
 }
 
-// 新建文件夹
+// 新建论文集
 const create_doc_store = () => {
     return post('/paper/create_doc_store', qs.stringify(data.newFolder)).then(res => {
         console.log(res)
         if (res.code == 0){
             message.success('创建成功')
+            get_docs()
         }
         else{
             message.error('创建失败')
@@ -320,17 +399,58 @@ const create_doc_store = () => {
     })
 }
 
+// 删除论文集
+const del_doc_store = (id: number) => {
+    console.log(id)
+    return post('/paper/del_doc_store', qs.stringify({id})).then(res => {
+        if (res.code == 0){
+            message.success('删除成功')
+            get_docs()
+        }
+        else{
+            message.error('删除失败')
+        }
+    })
+}
+
+// 创建论文
+const create_doc = (info: DocInfo) => {
+    return post('/paper/create_doc', qs.stringify(info)).then(res => {
+        if (res.code == 0){
+            message.success('创建成功')
+            return true
+        }
+        else{
+            message.error('创建失败')
+            return false
+        }
+    })
+}
+
+// 上传文件
 const handleChange = (info: UploadChangeParam) => {
     const status = info.file.status;
     if (status !== 'uploading') {
         console.log(info.file, info.fileList);
     }
     if (status === 'done') {
-        message.success(`${info.file.name} file uploaded successfully.`);
+        let res = info.file.response
+        if (res.code == 0){
+            message.success(`${info.file.name} file uploaded successfully.`);
+            chooseFile.path = res.data.path
+            visible.chooseVisible = true
+        }
+        else{
+            message.error(`${info.file.name} file upload failed.`);
+        }
     } else if (status === 'error') {
         message.error(`${info.file.name} file upload failed.`);
     }
 };
+
+const handleDrop = (e: DragEvent) => {
+    console.log(e);
+}
 
 const changeItemsDisplay = () => {
     let table = <HTMLImageElement>document.querySelector('.items .ant-table-tbody')
@@ -339,6 +459,17 @@ const changeItemsDisplay = () => {
     else
         table.style.display = 'none'
     data.flag = !data.flag
+}
+
+const ConfirmFolder = async () => {
+    console.log(chooseFile)
+    if(await create_doc(chooseFile)){
+        visible.chooseVisible = false
+        get_docs()
+    }
+    else {
+        visible.chooseVisible = false
+    }
 }
 
 onMounted(async () => {

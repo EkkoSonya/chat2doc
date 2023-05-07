@@ -17,6 +17,7 @@ export interface Item {
 
 export interface Folder {
     name: string;
+    id: number;
     docs?: Item[];
 }
 
@@ -31,4 +32,14 @@ export interface Data {
 export interface Visible {
     userVisible: boolean;
     folderVisible: boolean;
+    chooseVisible: boolean;
+}
+
+export interface DocInfo {
+    docstore_id: number | undefined;
+    path: string;
+    authors: string[];
+    title: string;
+    description: string;
+    abstract: string;
 }
