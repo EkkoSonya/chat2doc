@@ -1,4 +1,5 @@
 <template>
+    <a-spin :spinning="spinning" style="z-index: 9999;" size="large" > 
     <div id="app">
         <div class="contain">
             <div class="title">
@@ -190,7 +191,8 @@
                 </a-form>
             </div>
         </a-modal>
-
+        
+        
         <!-- 上传文件后选择所放置的文件夹 -->
         <a-modal
             :visible="visible.chooseVisible"
@@ -207,9 +209,15 @@
             <div class="form">
                 <a-form
                     :model="chooseFile"
-                    labelAlign="left"
+                    layout = "vertical"
+                    ref = "chooseFileForm"
+                    :rules = "chooseFolderRules"
                 >
-                    <a-form-item label="文件夹名称">
+                    <a-form-item label="文件标题">
+                        <a-input v-model:value="chooseFile.title"/>
+                    </a-form-item>
+                    
+                    <a-form-item label="放置文件夹">
                         <a-select v-model:value="chooseFile.docstore_id">
                             <a-select-option
                                 v-for="item in data.folders"
@@ -219,6 +227,29 @@
                             </a-select-option>
                         </a-select>
                     </a-form-item>
+
+                    <a-form-item label="文件描述">
+                        <a-input v-model:value="chooseFile.description"/>
+                    </a-form-item>
+
+                    <a-form-item label="作者名">
+                        <div 
+                            class="authors"
+                            v-for="(item, index) in chooseFile.authors" 
+                            style="display: flex;margin: 0 0 0.8rem 0;"
+                        >
+                            <a-input 
+                                style="margin-right: 1rem;"
+                                v-model:value="chooseFile.authors[index]"
+                            />
+                            <a-button @click="chooseFile.authors.splice(index,1)"><MinusOutlined /></a-button>
+                        </div>
+
+                        <div>
+                            <a-button @click="chooseFile.authors.push('')"><PlusOutlined /></a-button>
+                        </div>
+                    </a-form-item>
+
 
                     <a-form-item>
                         <a-button 
@@ -233,18 +264,25 @@
             </div>
 
         </a-modal>
-    </div>
+        
+    </div></a-spin>
 </template>
 
 <script lang="ts" setup>
-import { InboxOutlined, PlusOutlined, QuestionCircleOutlined, DownOutlined, UpOutlined } from '@ant-design/icons-vue';
+import { InboxOutlined, PlusOutlined, QuestionCircleOutlined, DownOutlined, UpOutlined, MinusOutlined } from '@ant-design/icons-vue';
 import { message } from 'ant-design-vue';
 import { reactive, ref, onMounted } from 'vue';
 import type { UploadChangeParam } from 'ant-design-vue';
 import { get, post } from './api/index'
+import { userInfoRules, chooseFolderRules } from './utils/FormValidate'
 import qs from 'qs'
 // 数据样式
 import type { Data, Visible, DocInfo} from './types'
+
+const spinning = ref<boolean>(false);
+const changeSpinning = () => {
+      spinning.value = !spinning.value;
+};
 
 // 表格样式
 const FolderColumns = [
@@ -287,7 +325,6 @@ const ItemsColumns = [
     }
 ]
 
-
 const visible = reactive<Visible>({
     userVisible: false,
     folderVisible: false,
@@ -318,14 +355,7 @@ const chooseFile = reactive<DocInfo>({
 })
 
 const userInfoForm = ref()
-const userInfoRules = {
-    name: [
-        { required: true, message: '请输入用户名', trigger: 'blur'},
-    ],
-    password: [
-        { required: true, message: '请输入密码', trigger: 'blur'},
-    ]
-}
+const chooseFileForm = ref()
 
 const fileList = ref([])
 
@@ -415,7 +445,9 @@ const del_doc_store = (id: number) => {
 
 // 创建论文
 const create_doc = (info: DocInfo) => {
-    return post('/paper/create_doc', qs.stringify(info)).then(res => {
+    // 匹配最后一个.之前的内容
+    console.log(info)
+    return post('/paper/create_doc',JSON.stringify(info)).then(res => {
         if (res.code == 0){
             message.success('创建成功')
             return true
@@ -461,15 +493,17 @@ const changeItemsDisplay = () => {
     data.flag = !data.flag
 }
 
-const ConfirmFolder = async () => {
+const ConfirmFolder = () => {
     console.log(chooseFile)
-    if(await create_doc(chooseFile)){
+    chooseFileForm.value.validate()
+    .then(async () => {
         visible.chooseVisible = false
+        changeSpinning()
+        await create_doc(chooseFile)
+        changeSpinning()
         get_docs()
-    }
-    else {
-        visible.chooseVisible = false
-    }
+    })
+
 }
 
 onMounted(async () => {
@@ -516,4 +550,6 @@ onMounted(async () => {
     justify-content: center;
     margin-top: 1rem;
 }
+
+
 </style>

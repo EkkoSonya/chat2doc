@@ -3,7 +3,7 @@ import type { InternalAxiosRequestConfig, AxiosInstance, AxiosResponse } from 'a
 
 const axiosInstance: AxiosInstance = axios.create({
     baseURL: 'http://localhost:5173/chat2doc',
-    timeout: 5000,
+    timeout: 5000 * 12,
 });
 
 // 添加请求拦截器
