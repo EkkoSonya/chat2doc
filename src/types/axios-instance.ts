@@ -2,8 +2,8 @@ import axios from 'axios';
 import type { InternalAxiosRequestConfig, AxiosInstance, AxiosResponse } from 'axios'
 
 const axiosInstance: AxiosInstance = axios.create({
-    baseURL: 'http://localhost:5173/chat2doc',
-    timeout: 5000 * 12,
+  baseURL: 'http://localhost:5173/chat2doc',
+  timeout: 1000 * 60 * 5, // 5分钟超时
 });
 
 // 添加请求拦截器
