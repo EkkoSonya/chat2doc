@@ -6,6 +6,14 @@ export interface UserInfo {
     last_name?: string;
 }
 
+export interface User {
+    name: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    isLogin: boolean;
+}
+
 export interface NewFolder {
     name: string;
     description: string;
@@ -38,6 +46,7 @@ export interface ChatInfo {
 
 export interface Data {
     userInfo: UserInfo;
+    user: User;
     folders: Folder[];
     items: Item[];
     flag: boolean;

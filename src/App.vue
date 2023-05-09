@@ -2,6 +2,16 @@
     <a-spin :spinning="spinning" style="z-index: 9999;" size="large">
         <div id="app">
             <div class="contain">
+                <!-- 用户信息 -->
+                <div class="user_info">
+                    <div v-if="data.user.isLogin">
+                        <span>用户名: {{ data.user.name }}</span>
+                        <a-button type="link" @click="userLogout">退出</a-button>
+                    </div>
+                    <div v-else>
+                        <a-button type="link" @click="visible.user = true">登录</a-button>
+                    </div>
+                </div>
                 <div class="title">
                     <h1>
                         Chat2doc
@@ -9,11 +19,20 @@
                 </div>
                 <!-- 用户文件上传入口 -->
                 <div class="load" style="margin-top:0px">
-                    <a-card class="card">
-                        <a-upload-dragger v-model:fileList="fileList" name="paper_file" :multiple="false"
-                            :withCredentials="true" action="http://localhost:5173/chat2doc/paper/upload_doc" :headers="{
+                    <a-card class="card" >
+                        <a-upload-dragger 
+                            ref = "upload"
+                            v-model:fileList="fileList" 
+                            name="paper_file" 
+                            :multiple="false"
+                            :withCredentials="true" 
+                            action="http://localhost:5173/chat2doc/paper/upload_doc" 
+                            :headers="{
                                 'X-Requested-With': null
-                            }" @change="handleChange" @drop="handleDrop">
+                            }" 
+                            @change="handleChange" 
+                            @drop="handleDrop"
+                        >
                             <div class="upload">
                                 <p class="ant-upload-drag-icon">
                                     <inbox-outlined></inbox-outlined>
@@ -38,12 +57,35 @@
                                 <PlusOutlined />
                                 新建文件夹
                             </a-button>
-                            <a-button>
+                            <a-button @click="folder_upload(false)">
                                 <PlusOutlined />
                                 上传文件
                             </a-button>
-                            <a-table size="small" :pagination="{ disabled: true, hideOnSinglePage: true }"
-                                :columns="FolderColumns" :data-source="data.folders" style="margin-top: 10px;">
+                            <a-table 
+                                size="small" 
+                                :pagination="{ disabled: true, hideOnSinglePage: true }"
+                                :columns="FolderColumns" 
+                                :data-source="data.folders"
+                                :expandRowByClick = "true"
+                                style="margin-top: 10px;"
+                            >
+                                <template #expandedRowRender="{ record }">
+                                    <a-table 
+                                        size="small" :pagination="{ disabled: true, hideOnSinglePage: true }"
+                                        :columns="ItemsColumns" 
+                                        :data-source="record.docs"
+                                        :showHeader="false"
+                                        v-if="record.docs.length"
+                                    >
+                                        <template #operation="{ record }">
+                                            <span>
+                                                <a @click="put_question(record)">提问</a>
+                                                <a-divider type="vertical" />
+                                                <a @click="del_doc(record.id)">删除</a>
+                                            </span>
+                                        </template>
+                                    </a-table>
+                                </template>
                                 <template #name>
                                     <span>
                                         文件夹
@@ -56,15 +98,16 @@
                                         <a-divider type="vertical" />
                                         <a @click="del_doc_store(record.id)">删除</a>
                                         <a-divider type="vertical" />
-                                        <a>上传</a>
+                                        <a @click="folder_upload(record)">上传</a>
                                     </span>
                                 </template>
                             </a-table>
                         </div>
 
-                        <div class="items" style="margin-top: 20px;">
+                        <!-- <div class="items" style="margin-top: 20px;">
                             <a-table size="small" :pagination="{ disabled: true, hideOnSinglePage: true }"
                                 :columns="ItemsColumns" :data-source="data.items">
+
                                 <template #name>
                                     <span>
                                         所有文件
@@ -81,7 +124,7 @@
                                     </span>
                                 </template>
                             </a-table>
-                        </div>
+                        </div> -->
                     </a-card>
                 </div>
             </div>
@@ -103,7 +146,7 @@
                         </a-form-item>
                         <a-form-item>
                             <div class="flexCenter">
-                                <a-button type="primary" style="margin-right:2rem" @click="userLogin">登录</a-button>
+                                <a-button type="primary" style="margin-right:2rem" @click="userLogin" @enter="userLogin">登录</a-button>
                                 <a-button type="primary">注册</a-button>
                             </div>
                         </a-form-item>
@@ -112,7 +155,12 @@
             </a-modal>
 
             <!-- 新建文件夹信息 -->
-            <a-modal :visible="visible.folder" width="400px" :closable=false :footer="null">
+            <a-modal 
+                :visible="visible.folder" 
+                width="400px" 
+                :footer="null"
+                @cancel="visible.folder = false;data.newFolder.name = '';data.newFolder.description = ''"    
+            >
                 <div class="title" style="text-align: center;margin-bottom: 30px;">
                     <h2>
                         新建文件夹
@@ -120,7 +168,7 @@
                 </div>
 
                 <div class="form">
-                    <a-form :model="data.newFolder" labelAlign="left">
+                    <a-form :model="data.newFolder" labelAlign="left" layout="vertical">
                         <a-form-item label="文件夹名称">
                             <a-input v-model:value="data.newFolder.name" />
                         </a-form-item>
@@ -155,7 +203,7 @@
 
                         <a-form-item label="放置文件夹">
                             <a-select v-model:value="chooseFile.docstore_id">
-                                <a-select-option v-for="  item   in   data.folders  " :value="item.id">
+                                <a-select-option v-for="item in data.folders" :value="item.id">
                                     {{ item.name }}
                                 </a-select-option>
                             </a-select>
@@ -205,20 +253,22 @@
                     docs: undefined
                 }"
                 :bodyStyle="{
-                    padding: '0 0 0 1rem'
+                    padding: '0 0 0 1rem',
+                    height: '600px'
                 }"
             >
-
+                
                 <div class="dialog" style="height: calc(100vh - 164px);">
-                    <div v-if="data.chatInfo.docs" style="margin-top: 0.4rem">
-                        同时对下列文件进行提问:
-                        <div class="docs">
-                            <div v-for=" item  in  data.chatInfo.docs " :key="item.id">
-                                <FileTextOutlined />{{ ' ' + item.title }}
-                            </div>
-                        </div> 
-                    </div>
-                    <CScrollbar>
+                    <el-scrollbar>
+                        <div v-if="data.chatInfo.docs" style="margin-top: 0.4rem">
+                            同时对下列文件进行提问:
+                            <div class="docs">
+                                <div v-for=" item  in  data.chatInfo.docs " :key="item.id">
+                                    <FileTextOutlined />{{ ' ' + item.title }}
+                                </div>
+                            </div> 
+                        </div>
+                    
                         <div class="chat-message-row" v-for=" item in data.chatInfo.history ">
                             <div class="chat-message" :class="item.role">
                                 <a-spin :spinning="!item.text">
@@ -226,11 +276,11 @@
                                 </a-spin>
                             </div>
                         </div>
-                    </CScrollbar>
+                    </el-scrollbar>
                 </div>
 
                 <template #title>
-                    <span style="font-weight: 700;font-size: 1.1rem;">
+                    <span style="font-weight: 700;">
                         {{ '对 AI 提问 ' + '> '}}
                         <FolderOutlined v-if="data.chatInfo.docs"/>
                         <FileTextOutlined v-else/>
@@ -261,14 +311,21 @@ import type { UploadChangeParam } from 'ant-design-vue';
 import { get, post } from './api/index'
 import { userInfoRules, chooseFolderRules } from './utils/FormValidate'
 import qs from 'qs'
-import { CScrollbar } from 'c-scrollbar';
+
 // 数据样式
 import type { Data, Visible, DocInfo, ChatInfo } from './types'
+
+message.config({
+    duration: 1
+})
 
 const spinning = ref<boolean>(false);
 const changeSpinning = () => {
     spinning.value = !spinning.value;
 };
+
+// 绑定Uplaod组件，用于上传文件
+const upload = ref()
 
 // 表格样式
 const FolderColumns = [
@@ -317,11 +374,17 @@ const visible = reactive<Visible>({
     choose: false,
     chat: false
 })
-
 const data = reactive<Data>({
     userInfo: {
         name: '',
         password: ''
+    },
+    user: {
+        name: '',
+        first_name: '',
+        last_name: '',
+        email: '',
+        isLogin: false
     },
     folders: [],
     items: [],
@@ -338,7 +401,6 @@ const data = reactive<Data>({
         docs: undefined
     }
 })
-
 const chooseFile = reactive<DocInfo>({
     docstore_id: undefined,
     path: '',
@@ -350,20 +412,37 @@ const chooseFile = reactive<DocInfo>({
 
 const userInfoForm = ref()
 const chooseFileForm = ref()
-
 const fileList = ref([])
 
 
 // 函数
 
+// 指定文件夹进行上传
+const folder_upload = (record: any) => {
+    if(record)
+        chooseFile.docstore_id = record.id
+    upload.value.$el.querySelector('input').click()
+}
+
 // 登录
 const userLogin = () => {
     userInfoForm.value.validate()
         .then(() => {
-            post('/paper/login', qs.stringify(data.userInfo)).then(res => {
+            post('/paper/login', qs.stringify(data.userInfo)).then((res: any) => {
                 if (res.code == 0) {
                     message.success('登录成功')
+                    data.user = {
+                        name: res.data.name,
+                        first_name: res.data.first_name,
+                        last_name: res.data.last_name,
+                        email: res.data.email,
+                        isLogin: true
+                    }
                     visible.user = false
+                    data.userInfo = {
+                        name: '',
+                        password: ''
+                    }
                     get_docs()
                 }
                 else {
@@ -376,6 +455,27 @@ const userLogin = () => {
             message.error('登录失败')
             visible.user = true
         })
+};
+
+// 登出
+const userLogout = () => {
+    get('/paper/logout').then(res => {
+        if (res.code == 0) {
+            message.success('登出成功')
+            data.user = {
+                name: '',
+                first_name: '',
+                last_name: '',
+                email: '',
+                isLogin: false
+            }
+            data.folders = []
+            data.items = []
+        }
+        else {
+            message.error('登出失败')
+        }
+    })
 };
 
 // 获取文档信息
@@ -559,8 +659,6 @@ const sendQuery = (searchValue: string) => {
     })
 };
 
-
-
 // 删除论文
 const del_doc = (id: number) => {
     return post('/paper/del_doc', qs.stringify({ id })).then(res => {
@@ -601,9 +699,6 @@ const ConfirmFolder = () => {
 };
 
 onMounted(async () => {
-    let table = <HTMLImageElement>document.querySelector('.items .ant-table-tbody')
-    table.style.display = 'none'
-
     if (!await get_docs())
         visible.user = true
 });
@@ -641,11 +736,16 @@ onMounted(async () => {
     }
 }
 
+.user_info {
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+}
 // :deep(.modalSty .ant-modal-content) {
 //     min-width: 1000px;
 //     margin: auto;
 // }
-.dialog {
+.dialog { 
     .chat-message-row {
         display: flex;
         flex-direction: column;
@@ -684,10 +784,14 @@ onMounted(async () => {
     }
 }
 
+.ps {
+    height: 600px;
+}
 .flexCenter {
     display: flex;
     align-items: center;
     justify-content: center;
     margin-top: 1rem;
 }
+
 </style>
