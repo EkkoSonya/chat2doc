@@ -12,7 +12,9 @@ export interface NewFolder {
 }
 
 export interface Item {
-    name: string;
+    title: string;
+    id: number;
+    docstore_id: number;
 }
 
 export interface Folder {
@@ -21,18 +23,33 @@ export interface Folder {
     docs?: Item[];
 }
 
+export interface History {
+    role: string;
+    text: string;
+}
+
+export interface ChatInfo {
+    name: string;
+    id: number | undefined;
+    query: string;
+    history: History[];
+    docs: Item[] | undefined;
+}
+
 export interface Data {
     userInfo: UserInfo;
     folders: Folder[];
     items: Item[];
     flag: boolean;
     newFolder: NewFolder;
+    chatInfo: ChatInfo;
 }
 
 export interface Visible {
-    userVisible: boolean;
-    folderVisible: boolean;
-    chooseVisible: boolean;
+    user: boolean;
+    folder: boolean;
+    choose: boolean;
+    chat: boolean;
 }
 
 export interface DocInfo {
