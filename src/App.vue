@@ -259,21 +259,23 @@
             >
                 
                 <div class="dialog" style="height: calc(100vh - 164px);">
-                    <el-scrollbar>
-                        <div v-if="data.chatInfo.docs" style="margin-top: 0.4rem">
-                            同时对下列文件进行提问:
-                            <div class="docs">
-                                <div v-for=" item  in  data.chatInfo.docs " :key="item.id">
-                                    <FileTextOutlined />{{ ' ' + item.title }}
+                    <el-scrollbar ref="scrollbarRef">
+                        <div ref="scrollInnerRef">
+                            <div v-if="data.chatInfo.docs" style="margin-top: 0.4rem">
+                                同时对下列文件进行提问:
+                                <div class="docs">
+                                    <div v-for=" item  in  data.chatInfo.docs " :key="item.id">
+                                        <FileTextOutlined />{{ ' ' + item.title }}
+                                    </div>
+                                </div> 
+                            </div>
+                        
+                            <div class="chat-message-row" v-for=" item in data.chatInfo.history ">
+                                <div class="chat-message" :class="item.role">
+                                    <a-spin :spinning="!item.text">
+                                        {{ item.text }}
+                                    </a-spin>
                                 </div>
-                            </div> 
-                        </div>
-                    
-                        <div class="chat-message-row" v-for=" item in data.chatInfo.history ">
-                            <div class="chat-message" :class="item.role">
-                                <a-spin :spinning="!item.text">
-                                    {{ item.text }}
-                                </a-spin>
                             </div>
                         </div>
                     </el-scrollbar>
@@ -326,6 +328,8 @@ const changeSpinning = () => {
 
 // 绑定Uplaod组件，用于上传文件
 const upload = ref()
+// const scrollbarRef = ref<InstanceType<typeof ElScrollbar>>()
+// const scrollInnerRef = ref<HTMLDivElement>()
 
 // 表格样式
 const FolderColumns = [
@@ -616,7 +620,7 @@ const get_chat = (info: ChatInfo) => {
     let question
     if(!info.docs){
         question = {
-            id: info.id,
+            doc_id: info.id,
             query: info.query
         }
     }
@@ -648,13 +652,16 @@ const sendQuery = (searchValue: string) => {
         role: 'assistant',
         text: ''
     })
+
+    // scrollbarRef.value!.setScrollTop(scrollInnerRef.value!.clientHeight)
+    // console.log(scrollInnerRef.value!.clientHeight)
     get_chat(data.chatInfo).then((res: any) => {
         if (res) {
             console.log(res.answer)
             data.chatInfo.history[data.chatInfo.history.length - 1].text = res.answer
         }
         else {
-            message.error('获取问答失败')
+            data.chatInfo.history[data.chatInfo.history.length - 1].text = '获取问答失败'
         }
     })
 };
@@ -701,6 +708,8 @@ const ConfirmFolder = () => {
 onMounted(async () => {
     if (!await get_docs())
         visible.user = true
+    
+    console.log(import.meta.env)
 });
 </script>
 
