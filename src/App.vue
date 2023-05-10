@@ -26,7 +26,7 @@
                             name="paper_file" 
                             :multiple="false"
                             :withCredentials="true" 
-                            action="http://localhost:5173/chat2doc/paper/upload_doc" 
+                            action="http://localhost:8000/chat2doc/paper/upload_doc" 
                             :headers="{
                                 'X-Requested-With': null
                             }" 
