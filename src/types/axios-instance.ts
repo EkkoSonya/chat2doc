@@ -1,8 +1,10 @@
 import axios from 'axios';
 import type { InternalAxiosRequestConfig, AxiosInstance, AxiosResponse } from 'axios'
 
+let base_url = import.meta.env.VITE_API_URL
+
 const axiosInstance: AxiosInstance = axios.create({
-  baseURL: 'http://localhost:8000/chat2doc',
+  baseURL: base_url,
   timeout: 1000 * 60 * 5, // 5分钟超时
 });
 
