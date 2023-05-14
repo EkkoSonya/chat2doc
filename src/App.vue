@@ -20,7 +20,21 @@
                 <!-- 用户文件上传入口 -->
                 <div class="load" style="margin-top:0px">
                     <a-card class="card" >
+                        
+                        <div class="upload" @click="visible.choose = true;">
+                            <p class="icon">
+                                <inbox-outlined></inbox-outlined>
+                            </p>
+                            <p class="text">
+                                点击开始进行上传文件
+                            </p>
+                            <p class="hint">
+                                支持.pdf & .docx 文件
+                            </p>
+                        </div>
+
                         <a-upload-dragger 
+                            style="display: none;"
                             ref = "upload"
                             v-model:fileList="fileList" 
                             name="paper_file" 
@@ -33,18 +47,6 @@
                             @change="handleChange" 
                             @drop="handleDrop"
                         >
-                            <div class="upload">
-                                <p class="ant-upload-drag-icon">
-                                    <inbox-outlined></inbox-outlined>
-                                </p>
-                                <p class="ant-upload-text">
-                                    拖拽文件到此处 或 点击上传文件
-                                </p>
-                                <p class="ant-upload-hint">
-                                    支持.pdf & .docx 文件
-                                </p>
-                            </div>
-
                         </a-upload-dragger>
                     </a-card>
                 </div>
@@ -57,7 +59,7 @@
                                 <PlusOutlined />
                                 新建文件夹
                             </a-button>
-                            <a-button @click="folder_upload(false)">
+                            <a-button @click="visible.choose = true;">
                                 <PlusOutlined />
                                 上传文件
                             </a-button>
@@ -77,12 +79,22 @@
                                         :showHeader="false"
                                         v-if="record.docs.length"
                                     >
-                                        <template #operation="{ record }">
-                                            <span>
-                                                <a @click="put_question(record)">提问</a>
-                                                <a-divider type="vertical" />
-                                                <a @click="del_doc(record.id)">删除</a>
-                                            </span>
+                                        <template #operation="{ record, index }">
+                                            <a-spin :spinning=" record.id == undefined">
+                                                <span>
+                                                    <a @click="put_question(record)">提问</a>
+                                                    <a-divider type="vertical" />
+                                                    <a @click="del_doc(record.id)">删除</a>
+                                                    <a-divider type="vertical" />
+                                                    <a @click="visible.modify[0] = true;modify.doc = {
+                                                        id: record.id,
+                                                        title: record.title,
+                                                        description: record.description,
+                                                        authors: record.authors.split(','),
+                                                        abstract: record.abstract,
+                                                    }">修改</a> 
+                                                </span>
+                                            </a-spin>
                                         </template>
                                     </a-table>
                                 </template>
@@ -94,37 +106,21 @@
                                 </template>
                                 <template #operation="{ record }">
                                     <span>
-                                        <a @click="put_question_folder(record)">提问</a>
+                                        <a @click="put_question_folder(record);">提问</a>
                                         <a-divider type="vertical" />
                                         <a @click="del_doc_store(record.id)">删除</a>
                                         <a-divider type="vertical" />
-                                        <a @click="folder_upload(record)">上传</a>
+                                        <a @click="visible.choose = true; chooseFile.docstore_id = record.id;">上传</a>
+                                        <a-divider type="vertical" />
+                                        <a @click="visible.modify[1] = true;modify.doc_store = {
+                                            id: record.id,
+                                            name: record.name,
+                                            description: record.description,
+                                        }">修改</a>
                                     </span>
                                 </template>
                             </a-table>
                         </div>
-
-                        <!-- <div class="items" style="margin-top: 20px;">
-                            <a-table size="small" :pagination="{ disabled: true, hideOnSinglePage: true }"
-                                :columns="ItemsColumns" :data-source="data.items">
-
-                                <template #name>
-                                    <span>
-                                        所有文件
-                                        <UpOutlined v-if="!data.flag" @click="changeItemsDisplay" />
-                                        <DownOutlined v-if="data.flag" @click="changeItemsDisplay" />
-                                    </span>
-                                </template>
-
-                                <template #operation="{ record }">
-                                    <span>
-                                        <a @click="put_question(record)">提问</a>
-                                        <a-divider type="vertical" />
-                                        <a @click="del_doc(record.id)">删除</a>
-                                    </span>
-                                </template>
-                            </a-table>
-                        </div> -->
                     </a-card>
                 </div>
             </div>
@@ -188,10 +184,23 @@
 
 
             <!-- 上传文件后选择所放置的文件夹 -->
-            <a-modal :visible="visible.choose" width="400px" :closable=false :footer="null">
+            <a-modal 
+                :visible="visible.choose" 
+                width="400px" 
+                :footer="null"
+                @cancel="visible.choose = false;
+                Object.assign(chooseFile,{
+                    docstore_id: undefined,
+                    path: '',
+                    authors: [],
+                    title: '',
+                    description: '',
+                    abstract: ''
+                })"    
+            >
                 <div class="title" style="text-align: center;margin-bottom: 30px;">
                     <h2>
-                        请选择文件夹放置文件
+                        上传文件相关信息
                     </h2>
                 </div>
 
@@ -214,8 +223,12 @@
                         </a-form-item>
 
                         <a-form-item label="作者名">
-                            <div class="authors" v-for="(  item, index  ) in   chooseFile.authors  "
-                                style="display: flex;margin: 0 0 0.8rem 0;">
+                            <div 
+                                class="authors" 
+                                v-for="( item, index ) in chooseFile.authors"
+                                style="display: flex;
+                                margin: 0 0 0.8rem 0;"
+                            >
                                 <a-input style="margin-right: 1rem;" v-model:value="chooseFile.authors[index]" />
                                 <a-button @click="chooseFile.authors.splice(index, 1)">
                                     <MinusOutlined />
@@ -228,7 +241,6 @@
                                 </a-button>
                             </div>
                         </a-form-item>
-
 
                         <a-form-item>
                             <a-button type="primary" style="margin-right:2rem" @click="ConfirmFolder">
@@ -301,6 +313,99 @@
                     </a-input-search>
                 </template>
             </a-modal>
+        
+            <!-- 论文修改 -->
+            <a-modal 
+                v-model:visible="visible.modify[0]" 
+                :centered="true" 
+                width="400px"
+                @cancel="visible.modify[0] = false;modify.doc = {
+                    title: '',
+                    id: undefined,
+                    abstract: '',
+                    authors: [],
+                    description: ''
+                }"
+                :footer="null"
+            >
+                <div class="title" style="text-align: center;margin-bottom: 30px;">
+                    <h2>
+                        修改论文信息
+                    </h2>
+                </div>
+                <div class="form">
+                    <a-form :model="chooseFile" layout="vertical" ref="chooseFileForm" :rules="chooseFolderRules">
+                        <a-form-item label="文件标题">
+                            <a-input v-model:value="modify.doc.title" />
+                        </a-form-item>
+
+                        <a-form-item label="文件描述">
+                            <a-input v-model:value="modify.doc.description" />
+                        </a-form-item>
+
+                        <a-form-item label="作者名">
+                            <div 
+                                class="authors" 
+                                v-for="( item, index ) in modify.doc.authors"
+                                style="display: flex;
+                                margin: 0 0 0.8rem 0;"
+                            >
+                                <a-input style="margin-right: 1rem;" v-model:value="modify.doc.authors[index]" />
+                                <a-button @click="modify.doc.authors.splice(index, 1)">
+                                    <MinusOutlined />
+                                </a-button>
+                            </div>
+
+                            <div>
+                                <a-button @click="modify.doc.authors.push('')">
+                                    <PlusOutlined />
+                                </a-button>
+                            </div>
+                        </a-form-item>
+
+                        <a-form-item>
+                            <a-button type="primary" style="margin-right:2rem" @click="ModifyDoc">
+                                确认
+                            </a-button>
+                        </a-form-item>
+                    </a-form>
+                </div>
+            </a-modal>
+
+            <a-modal 
+                v-model:visible="visible.modify[1]" 
+                :centered="true" 
+                width="400px"
+                @cancel="visible.modify[1] = false;modify.doc_store = {
+                    id: undefined,
+                    name: '',
+                    description: ''
+                }"
+                :footer="null"
+            >
+                <div class="title" style="text-align: center;margin-bottom: 30px;">
+                    <h2>
+                        修改论文集信息
+                    </h2>
+                </div>
+                <div class="form">
+                    <a-form :model="chooseFile" layout="vertical" ref="chooseFileForm" :rules="chooseFolderRules">
+                        <a-form-item label="论文集标题">
+                            <a-input v-model:value="modify.doc_store.name" />
+                        </a-form-item>
+
+                        <a-form-item label="论文集描述">
+                            <a-input v-model:value="modify.doc_store.description" />
+                        </a-form-item>
+
+                        <a-form-item>
+                            <a-button type="primary" style="margin-right:2rem" @click="ModifyDocStore">
+                                确认
+                            </a-button>
+                        </a-form-item>
+                    </a-form>
+                </div>
+            </a-modal>
         </div>
     </a-spin>
 </template>
@@ -315,7 +420,7 @@ import { userInfoRules, chooseFolderRules } from './utils/FormValidate'
 import qs from 'qs'
 
 // 数据样式
-import type { Data, Visible, DocInfo, ChatInfo } from './types'
+import type { Data, Visible, DocInfo, ChatInfo, Item, ModifyInfo, NewFolder } from './types'
 
 message.config({
     duration: 1
@@ -343,7 +448,7 @@ const FolderColumns = [
         title: '操作',
         slots: { customRender: 'operation' },
         align: 'center',
-        width: 150,
+        width: 200,
         customHeaderCell: () => ({
             style: {
                 textAlign: 'center'
@@ -363,7 +468,7 @@ const ItemsColumns = [
         title: '操作',
         slots: { customRender: 'operation' },
         align: 'center',
-        width: 150,
+        width: 200,
         customHeaderCell: () => ({
             style: {
                 textAlign: 'center'
@@ -376,8 +481,10 @@ const visible = reactive<Visible>({
     user: false,
     folder: false,
     choose: false,
-    chat: false
+    chat: false,
+    modify: [false, false]
 })
+
 const data = reactive<Data>({
     userInfo: {
         name: '',
@@ -397,6 +504,7 @@ const data = reactive<Data>({
         name: '',
         description: ''
     },
+    uploadFiles: [],
     chatInfo: {
         name: '',
         id: undefined,
@@ -405,6 +513,7 @@ const data = reactive<Data>({
         docs: undefined
     }
 })
+
 const chooseFile = reactive<DocInfo>({
     docstore_id: undefined,
     path: '',
@@ -414,19 +523,27 @@ const chooseFile = reactive<DocInfo>({
     abstract: ''
 })
 
+const modify = reactive<ModifyInfo>({
+    doc_store: {
+        name:'',
+        description:'',
+        id:undefined
+    },
+    doc: {
+        id:undefined,
+        title:'',
+        authors:[],
+        description:"",
+        abstract:""
+    }
+})
+
 const userInfoForm = ref()
 const chooseFileForm = ref()
 const fileList = ref([])
 
 
 // 函数
-
-// 指定文件夹进行上传
-const folder_upload = (record: any) => {
-    if(record)
-        chooseFile.docstore_id = record.id
-    upload.value.$el.querySelector('input').click()
-}
 
 // 登录
 const userLogin = () => {
@@ -489,9 +606,12 @@ const get_docs = () => {
         if (res.code == 0) {
             data.items = []
             data.folders = res.data as any
+
             data.folders.forEach(folder => {
+                folder.key = folder.id
                 if (folder.docs) {
                     folder.docs.forEach(doc => {
+                        doc.key = doc.id
                         data.items.push(doc)
                     })
                 }
@@ -528,6 +648,21 @@ const create_doc_store = () => {
     })
 };
 
+// 修改论文集
+const modify_doc_store = ( doc_store: NewFolder ) => {
+    return post('/paper/modify_doc_store', qs.stringify(modify.doc_store)).then(res => {
+        console.log(res)
+        if (res.code == 0) {
+            message.success('修改成功')
+            return true
+        }
+        else {
+            message.error('修改失败')
+            return false
+        }
+    })
+};
+
 // 删除论文集
 const del_doc_store = (id: number) => {
     console.log(id)
@@ -558,6 +693,20 @@ const create_doc = (info: DocInfo) => {
     })
 };
 
+// 修改论文
+const modify_doc = (info: DocInfo) => {
+    return post('/paper/modify_doc', JSON.stringify(modify.doc)).then(res => {
+        if (res.code == 0) {
+            message.success('修改成功')
+            return true
+        }
+        else {
+            message.error('修改失败')
+            return false
+        }
+    })
+};
+
 // 上传文件
 const handleChange = (info: UploadChangeParam) => {
     const status = info.file.status;
@@ -569,7 +718,32 @@ const handleChange = (info: UploadChangeParam) => {
         if (res.code == 0) {
             message.success(`${info.file.name} file uploaded successfully.`);
             chooseFile.path = res.data.path
-            visible.choose = true
+            let nowFile = <Item>{
+                id: undefined,
+                key: undefined,
+                docstore_id: chooseFile.docstore_id,
+                title: chooseFile.title,
+            }
+ 
+            data.folders.forEach(folder => {
+                if (folder.id == nowFile.docstore_id) {
+                    console.log(folder.id,123)
+                    folder.docs.push(nowFile)
+                    console.log(folder)
+                }
+            })
+        
+
+            create_doc(chooseFile)
+            .then(res => {
+                if (res) {
+                    get_docs()
+                }
+            })
+            .catch(err => {
+                message.error('创建失败')
+                get_docs()
+            })
         }
         else {
             message.error(`${info.file.name} file upload failed.`);
@@ -683,26 +857,45 @@ const handleDrop = (e: DragEvent) => {
     console.log(e);
 };
 
-const changeItemsDisplay = () => {
-    let table = <HTMLImageElement>document.querySelector('.items .ant-table-tbody')
-    if (data.flag)
-        table.style.display = ''
-    else
-        table.style.display = 'none'
-    data.flag = !data.flag
+const ConfirmFolder = () => {
+    upload.value.$el.querySelector('input').click()
+    console.log(chooseFile)
+    visible.choose = false
+    // chooseFileForm.value.validate()
+    //     .then(async () => {
+    //         visible.choose = false
+    //         changeSpinning()
+    //         await create_doc(chooseFile)
+    //         changeSpinning()
+    //         get_docs()
+    //     })
+
 };
 
-const ConfirmFolder = () => {
-    console.log(chooseFile)
-    chooseFileForm.value.validate()
-        .then(async () => {
-            visible.choose = false
-            changeSpinning()
-            await create_doc(chooseFile)
-            changeSpinning()
-            get_docs()
-        })
+const ModifyDoc = async () => {
+    visible.modify[0] = false
+    await modify_doc(modify.doc)
+    get_docs()
 
+    modify.doc =  {
+        id:undefined,
+        title:'',
+        authors:[],
+        description:"",
+        abstract:""
+    }
+};
+
+const ModifyDocStore = async () => {
+    visible.modify[1] = false
+    await modify_doc_store(modify.doc_store)
+    get_docs()
+    
+    modify.doc_store = {
+        name: '',
+        description: '',
+        id: undefined
+    }
 };
 
 onMounted(async () => {
@@ -741,6 +934,34 @@ onMounted(async () => {
         .load {
             width: 100%;
             margin-top: 1rem;
+            .upload:hover {
+                border-color: #1890ff;;
+            }
+            .upload {
+                border: 1px dashed #d9d9d9;
+                border-radius: 6px;
+                padding: 40px 20px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                cursor: pointer;
+                .icon {
+                    font-size: 48px;
+                    color: #40a9ff;
+                    line-height: 0;
+                    text-align: center;
+                    margin-bottom: 20px;
+                }
+                .text {
+                    margin: 0 0 4px;
+                    color: #000000d9;
+                    font-size: 1rem;
+                }
+                .hint {
+                    color: #00000073;
+                    font-size: 0.8rem;
+                }
+            }
         }
     }
 }

@@ -17,15 +17,18 @@ export interface User {
 export interface NewFolder {
     name: string;
     description: string;
+    id?: number | undefined;
 }
 
 export interface Item {
+    key: number | undefined;
     title: string;
-    id: number;
+    id: number | undefined;
     docstore_id: number;
 }
 
 export interface Folder {
+    key?: number;
     name: string;
     id: number;
     docs?: Item[];
@@ -52,6 +55,7 @@ export interface Data {
     flag: boolean;
     newFolder: NewFolder;
     chatInfo: ChatInfo;
+    uploadFiles: Item[];
 }
 
 export interface Visible {
@@ -59,13 +63,20 @@ export interface Visible {
     folder: boolean;
     choose: boolean;
     chat: boolean;
+    modify: boolean[];
 }
 
 export interface DocInfo {
-    docstore_id: number | undefined;
-    path: string;
+    docstore_id?: number | undefined;
+    path?: string;
+    id?: number | undefined;
     authors: string[];
     title: string;
     description: string;
     abstract: string;
+}
+
+export interface ModifyInfo {
+    doc_store: NewFolder;
+    doc: DocInfo;
 }
